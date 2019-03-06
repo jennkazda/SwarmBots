@@ -1,1 +1,6 @@
-READYOU
+This folder is where the Formation1 code for the master, slave, and communications bot will be stored. 
+
+This formation will have the commnuications bot send instructions to the master and then the master will send the instructions to the slave bots. 
+
+This formation is also a test of our PID, poisiton coordinate system, and have the RF sensors have multiple channels of communication. 
+
