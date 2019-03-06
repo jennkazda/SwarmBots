@@ -1,1 +1,11 @@
 This is a senior capstone project. This project utilizes swarm intelligence that allow multiple robots to communicate amongst one another to perform a variety of formation tasks. 
+
+
+This project incorporates Swarm Artificial Intelligence into collaborative robotics to perform certain formation tasks. 
+This consists of one communications bot, one master bot, and three to four slave bots. The communications bot is an arduino equipped with 
+an RF sensor and joystick module. The communications bot is used to control the formations of the swarm as well as receiving information
+back from the swarm that is used for debugging and understanding what the swarm is doing. The master bot takes commands from the
+communications bot and relays them to the slaves. The master bot has a motor driver, distance sensor, photo interrupt sensors and a 
+rf sensor attached to the arduino. The slave bots take instructions frome of the final formation or what the communications bot sends. 
+This the master bot without any knowledgs uses a Grey Wolf swarm technique where there is one alpha, the master bot, that controls the 
+movements of the pack, the slave bots. 
