@@ -3,7 +3,25 @@
 #include "Arduino.h"
 #include "motorControl.h"
 
-
+/*  FUNCTION:
+ *    motorControl.h
+ *
+ *  DESIGN DESCRIPTION:
+ *    This header file holds all driving functions for the bots
+ *
+ *  PARAMETER LIST:
+ *    int speed
+ *
+ *  RETURNED:
+ *    None.
+ *
+ *  DESIGN OUTLINE:
+ *    1) Write digitial signal to GPIO motor pins.
+ *    2) Write PWM duty cycles to motor pins.
+ *
+ *  DESIGN CONSTRAINTS:
+ *    None.
+ *  ========================================================================================*/
 void motorControl::forward(int speed) {
 	digitalWrite(STDBYE, HIGH);
 	digitalWrite(AIN1, LOW);
