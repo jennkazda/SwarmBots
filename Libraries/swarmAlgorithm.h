@@ -1,64 +1,82 @@
-/*
-//put in main code
-masterState mState;
-slaveState sState;
-bot mBot;
-bot s1Bot;
-bot s2Bot;
-bot s3Bot;
-*/
 
-//arduino included libraries
+// arduino included libraries
 #include "Arduino.h"
 #include <SPI.h>    
 #include <Wire.h> 
-#include <RF24.h>
 #include <printf.h>
-#include <nRF24L01.h>
 #include "Adafruit_VL6180X.h"
 
-//libraries that were made for SwarmBots
+// libraries that were made for SwarmBots
 #include "motorControl.h"
 #include "RF_Sense.h"
 #include "PID.h"
 
+// defines
+#define DEFAULT 0
 
+// state machine for master bot
 enum masterState {
-	MIDLING = 0,
-	MSEND,
-	MMOVE,
-	MRECEIVE,
-	MUPDATE
+	M_IDLING = 0,
+	M_SEND,
+	M_MOVE,
+	M_RECEIVE,
+	M_UPDATE
 };
 
+// state machine for slave bot
 enum slaveState {
-	SIDLING = 0,
-	SRECEIVE,
-	SMOVE,
-	SSEND
+	S_IDLING = 0,
+	S_RECEIVE,
+	S_MOVE,
+	S_SEND
 };
 
-enum direction {
-	STOP = 0,
-	FORWARD = 1,
-	BACKWARD = 2,
-	LEFT = 3,
-	RIGHT = 4
-};
-
-struct bot {
-	float x;
-	float y;
-	byte lastMove;
-	direction direction;
-};
-
-
+// slave specifiers 
 enum slaveName {
 	SLAVE0 = 0,
 	SLAVE1,
 	SLAVE2
 };
+
+// characteristics of each bot
+struct bot {
+	float x;
+	float y;
+	unsigned int pipe;
+	byte lastMove;
+	byte direction;
+};
+
+/*  FUNCTION:
+ *		initializeBot
+ *
+ *  DESIGN DESCRIPTION:
+ *		Initializes each bot struct to a default value defined in the beginning of the swarmAlgorithm.h
+ *
+ *  PARAMETER LIST:
+ *		bot* botName: bot struct
+ *		unsigned int pipeAddr: the pipe address in which the bot will be assigned
+ *	
+ *  RETURNED:
+ *		None.
+ *
+ *  DESIGN OUTLINE:
+ *		1) Initialse struct values to default 
+ *
+ *  DESIGN CONSTRAINTS:
+ *		None.
+ *  ========================================================================================*/
+
+void initializeBot(bot* botName, unsigned int pipeAddr) {
+	botName->x = DEFAULT;
+	botName->y = DEFAULT;
+	botName->pipe = pipeAddr;
+	botName->lastMove = DEFAULT;
+	botName->direction = DEFAULT;
+}
+
+
+
 
 
 
