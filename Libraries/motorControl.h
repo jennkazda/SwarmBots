@@ -8,7 +8,7 @@ const byte BIN1 = 7;
 const byte BIN2 = 8;
 const byte PWMB = 10;
 
-class motorControl
+class drive
 {
 public:
 	void forward(int speed);
