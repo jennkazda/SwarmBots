@@ -17,4 +17,5 @@ public:
 	void stopMotor();
 	void right90DegreeTurn();
 	void left90DegreeTurn();
+	void backward(int speed);
 };
