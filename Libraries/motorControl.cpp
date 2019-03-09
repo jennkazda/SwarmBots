@@ -80,3 +80,12 @@ void motorControl::left90DegreeTurn() {
 	analogWrite(PWMB, 100);
 	delay(500);
 }
+void drive::backward(int speed) {
+  digitalWrite(STDBYE, HIGH);
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(BIN2, LOW);
+  analogWrite(PWMA, speed);
+  analogWrite(PWMB, speed);
+}
