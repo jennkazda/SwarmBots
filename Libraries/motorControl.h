@@ -1,3 +1,6 @@
+#ifndef MOTORCONTROL_H
+#define MOTORCONTROL_H
+
 #include "Arduino.h"
 
 const byte STDBYE = 12;
@@ -19,3 +22,5 @@ public:
 	void left90DegreeTurn();
 	void backward(int speed);
 };
+
+#endif
