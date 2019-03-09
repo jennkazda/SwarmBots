@@ -5,16 +5,16 @@
 #include "Arduino.h"
 #include <SPI.h>    
 #include <Wire.h> 
-#include <printf.h>
+//#include <printf.h>
 #include "Adafruit_VL6180X.h"
 
 // libraries that were made for SwarmBots
 #include "motorControl.h"
 #include "RF_Sense.h"
-#include "PID.h"
+// #include "PID.h"
 
 // defines
-#define DEFAULT 0
+#define INIT_VALUE 0
 
 // state machine for master bot
 enum masterState {
@@ -49,7 +49,8 @@ struct bot {
 	byte direction;
 };
 
-void initializeBot(bot* botName, unsigned int pipeAddr);
-
+class swarm{
+public:  
+  void initializeBot(bot* botName, unsigned int pipeAddr);
+};
 #endif
-
