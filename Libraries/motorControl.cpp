@@ -19,7 +19,7 @@
  *  DESIGN CONSTRAINTS:
  *    None.
  *  ========================================================================================*/
-void motorControl::forward(int speed) {
+void drive::forward(int speed) {
 	digitalWrite(STDBYE, HIGH);
 	digitalWrite(AIN1, LOW);
 	digitalWrite(AIN2, HIGH);
@@ -28,7 +28,7 @@ void motorControl::forward(int speed) {
 	analogWrite(PWMA, speed);
 	analogWrite(PWMB, speed);
 }
-void motorControl::rightTurn() {
+void drive::rightTurn() {
 	digitalWrite(STDBYE, HIGH);
 	digitalWrite(AIN1, LOW);
 	digitalWrite(AIN2, HIGH);
@@ -38,7 +38,7 @@ void motorControl::rightTurn() {
 	analogWrite(PWMB, 20);
 	delay(500);
 }
-void motorControl::leftTurn() {
+void drive::leftTurn() {
 	digitalWrite(STDBYE, HIGH);
 	digitalWrite(AIN1, LOW);
 	digitalWrite(AIN2, HIGH);
@@ -49,7 +49,7 @@ void motorControl::leftTurn() {
 	delay(500);
 }
 
-void motorControl::stopMotor() {
+void drive::stopMotor() {
 	digitalWrite(STDBYE, LOW);
 	digitalWrite(AIN1, LOW);
 	digitalWrite(AIN2, LOW);
@@ -59,7 +59,7 @@ void motorControl::stopMotor() {
 	analogWrite(PWMB, 0);
 }
 
-void motorControl::right90DegreeTurn() {
+void drive::right90DegreeTurn() {
 	digitalWrite(STDBYE, HIGH);
 	digitalWrite(AIN1, LOW);
 	digitalWrite(AIN2, HIGH);
@@ -70,7 +70,7 @@ void motorControl::right90DegreeTurn() {
 	delay(500);
 }
 
-void motorControl::left90DegreeTurn() {
+void drive::left90DegreeTurn() {
 	digitalWrite(STDBYE, HIGH);
 	digitalWrite(AIN1, LOW);
 	digitalWrite(AIN2, HIGH);
