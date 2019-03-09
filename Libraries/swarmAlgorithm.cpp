@@ -20,10 +20,10 @@
  *		None.
  *  ========================================================================================*/
 
-void initializeBot(bot* botName, unsigned int pipeAddr) {
-	botName->x = DEFAULT;
-	botName->y = DEFAULT;
+void swarm::initializeBot(bot* botName, unsigned int pipeAddr) {
+	botName->x = INIT_VALUE;
+	botName->y = INIT_VALUE;
 	botName->pipe = pipeAddr;
-	botName->lastMove = DEFAULT;
-	botName->direction = DEFAULT;
+	botName->lastMove = INIT_VALUE;
+	botName->direction = INIT_VALUE;
 }
