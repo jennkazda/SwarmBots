@@ -24,8 +24,8 @@
 
 void RF_Sense::readPipe(RF24* rfClass, uint8_t number, uint64_t pipe)
 {
-	rfClass.openReadingPipe(number, pipe);
-	rfClass.startListening();
+	rfClass->openReadingPipe(number, pipe);
+	rfClass->startListening();
 }
 
 /*  FUNCTION:
@@ -51,6 +51,6 @@ void RF_Sense::readPipe(RF24* rfClass, uint8_t number, uint64_t pipe)
 
 void RF_Sense::writingPipe(RF24* rfClass, uint64_t pipe)
 {
-	rfClass.openWritingPipe(PIPE);
-	rfClass.stopListening();
+	rfClass->openWritingPipe(PIPE);
+	rfClass->stopListening();
 }
