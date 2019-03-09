@@ -1,3 +1,5 @@
+#ifndef SWARMALGORITHM_H
+#define SWARMALGORITHM_H
 
 // arduino included libraries
 #include "Arduino.h"
@@ -48,3 +50,6 @@ struct bot {
 };
 
 void initializeBot(bot* botName, unsigned int pipeAddr);
+
+#endif
+
