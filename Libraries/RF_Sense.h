@@ -1,4 +1,7 @@
 
+#ifdef RF_SENSE_H
+#define RF_SENSE_H
+
 #include"Arduino.h"
 #include <RF24.h>
 #include <print.h>
@@ -19,3 +22,5 @@ public:
 	void readPipe(RF24* rfClass, uint8_t number, uint64_t pipe);
 	void writingPipe(RF24* rfClass, uint64_t pipe);
 };
+
+#end if
