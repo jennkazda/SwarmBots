@@ -24,27 +24,41 @@ bot s3Bot;
 
 
 enum masterState {
-	IDLING = 0,
-	SEND,
-	MOVE,
-	RECEIVE,
-	UPDATE
+	MIDLING = 0,
+	MSEND,
+	MMOVE,
+	MRECEIVE,
+	MUPDATE
 };
 
 enum slaveState {
-	IDLING = 0,
-	RECEIVE,
-	MOVE,
-	SEND
+	SIDLING = 0,
+	SRECEIVE,
+	SMOVE,
+	SSEND
+};
+
+enum direction {
+	STOP = 0,
+	FORWARD = 1,
+	BACKWARD = 2,
+	LEFT = 3,
+	RIGHT = 4
 };
 
 struct bot {
 	float x;
 	float y;
 	byte lastMove;
-	byte direction;
+	direction direction;
 };
 
+
+enum slaveName {
+	SLAVE0 = 0,
+	SLAVE1,
+	SLAVE2
+};
 
 
 
