@@ -1,9 +1,3 @@
-
-
-#include"Arduino.h"
-#include <RF24.h>
-#include <print.h>
-#include <nRF24L01.h>
 #include "RF_Sense.h"
 
 /*  FUNCTION:
