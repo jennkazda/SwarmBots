@@ -7,9 +7,11 @@
 const byte CE = 9;
 const byte CSN = 6;
 
+//put in main code
+/*
 RF24 radioMS(CE, CSN) // (CE,CNS) radio master to slave
 RF24 radioComm (CE, CSN) //(CE, CNS) adio commincator line
-
+*/
 
 class RF_Sense {
 public:
