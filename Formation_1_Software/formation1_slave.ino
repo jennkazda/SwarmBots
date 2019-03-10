@@ -47,11 +47,6 @@ unsigned int commandPipe  =  0xFF;                      //pipe for command bot p
 unsigned int slavePipe [] = {0x01, 0x02, 0x03, 0x04};   //different addresses for each smaster slave bot pipeline
 int slaveNum = sName;                                   //sets slave name to an integer
 
-uint8_t Stop = 0x00;                                    //value to stop motors
-uint8_t Forward = 0x01;                                 //value to move forward
-uint8_t Reverse = 0x02;                                 //value to move backwards
-uint8_t Left = 0x03;                                    //value to pivot left
-uint8_t Right = 0x04;                                   //value to pivot right
 uint8_t command = 0x00;                                 //default value for command to be sent from master
 
 void setup(){
