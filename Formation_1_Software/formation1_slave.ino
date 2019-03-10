@@ -57,7 +57,7 @@ uint8_t command = 0x00;                                 //default value for comm
 void setup(){
     Serial.begin(9600);               
     Radio.begin();
-    Radio.openReadingPipe(1, commandPipe);
+    Radio.openReadingPipe(1, sBot.pipe);
     Radio.startListening();
     Radio.setPALevel(RF24_PA_MIN);
     //printf_begin(); 
