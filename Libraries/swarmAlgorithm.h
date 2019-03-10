@@ -15,6 +15,11 @@
 
 // defines
 #define INIT_VALUE 0
+#define STOP 0x00                                      //value to stop motors
+#define FORWARD 0x01                                   //value to move forward
+#define REVERSE 0x02                                   //value to move backwards
+#define LEFT 0x03                                      //value to pivot left
+#define RIGHT 0x04                                     //value to pivot right
 
 // state machine for master bot
 enum masterState {
