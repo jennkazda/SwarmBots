@@ -23,12 +23,13 @@
 */
 
 #include "swarmAlgorithm.h"
+#include <printf.h>
 
 #define DEBUG_IDLE
 #define DEBUG_SEND
 #define DEBUG_MOVE
 #define DEBUG_UPDATE
-#define NUM_SLAVES 2
+#define NUM_SLAVES 3
 
 RF24 Radio(CE, CSN);
 Adafruit_VL6180X distSensor = Adafruit_VL6180X(); 
@@ -40,73 +41,33 @@ slaveState sState;
 bot mBot;
 bot sBot[NUM_SLAVES];
 
-
-/*
-#ifdef ONE_SLAVE 
-  bot s1Bot;
-  unsigned int slavePipe [] = {0x01};
-  Swarm.initializeBot(s1Bot, slavePipe[0]);
-#endif
-
-#ifdef TWO_SLAVES 
-  bot s1Bot;
-  bot s2Bot;
-  unsigned int slavePipe [] = {0x01, 0x02};
-  Swarm.initializeBot(s1Bot, slavePipe[0]);
-  Swarm.initializeBot(s2Bot, slavePipe[1]);
-#endif
-
-#ifdef THREE_SLAVES 
-  bot s1Bot;
-  bot s2Bot;
-  bot s3Bot;
-  unsigned int slavePipe [] = {0x01, 0x02, 0x03};
-  Swarm.initializeBot(s1Bot, slavePipe[0]);
-  Swarm.initializeBot(s2Bot, slavePipe[1]);
-  Swarm.initializeBot(s3Bot, slavePipe[2]);
-#endif
-
-#ifdef FOUR_SLAVES 
-  bot s1Bot;
-  bot s2Bot;
-  bot s3Bot;
-  bot s4Bot;
-  unsigned int slavePipe [] = {0x01, 0x02, 0x03, 0x04};
-  Swarm.initializeBot(s1Bot, slavePipe[0]);
-  Swarm.initializeBot(s2Bot, slavePipe[1]);
-  Swarm.initializeBot(s3Bot, slavePipe[2]);
-  Swarm.initializeBot(s4Bot, slavePipe[3]);
-#endif
-
-#define NUM_OF_SLAVES (sizeof(slavePipe)/sizeof(slavePipe[0]))
-*/
-#define STOP    0x00
-#define FORWARD 0x01
-#define REVERSE 0x02
-#define LEFT    0x03
-#define RIGHT   0x04
+#define STOP    0
+#define FORWARD 1
+#define REVERSE 2
+#define LEFT    3
+#define RIGHT   4
 
 bool result     = false;
+bool isReady    = true;
 int state       = mState;
 uint8_t command = 0x00;
 unsigned int commandPipe  =  0xFF;
 
 void setup(){
     Serial.begin(9600);
-    // printf_begin();
+    printf_begin();
     Radio.begin();
     Radio.openWritingPipe(commandPipe);
     Radio.stopListening();
     Radio.setPALevel(RF24_PA_MIN);
-    //Radio.printDetails();
+    Radio.printDetails();
     Drive.stopMotor();
     Swarm.initializeBot(sBot, NUM_SLAVES);
 }
 
 void loop(){
 
-  while(Radio.available())
-  {
+
     switch(state){
 /**********************************************************************************************/      
       case M_IDLING:
@@ -114,9 +75,20 @@ void loop(){
         #ifdef DEBUG_IDLE
           Serial.println("IDLE");
         #endif
+        
+        while(command == STOP){
+          /* Sends a isReady boolen value to the command center */
+          RF.writingPipe(&Radio, commandPipe);
+          while(Radio.write(&isReady, sizeof(isReady)) == false);
+          Serial.println("IDLE WRITE");
 
-        /* Reads in command data from command center */
-        Radio.read(&command, sizeof(command));  
+          /* Reads in command data from command center */
+          RF.readPipe(&Radio, 1, commandPipe);
+          Radio.read(&command, sizeof(command));
+          Serial.println(command);  
+        }
+        
+        
         
 //        if(command != Stop){}
 //        else if(command != Forward){}
@@ -143,8 +115,12 @@ void loop(){
           /* Switch radio pipes to transmit to different bots */
           RF.writingPipe(&Radio, sBot[i].pipe);
 
+          Serial.println("SEND WRITE");
+          
           /* Acknowledges transmitted message was received by distant end */
           while(Radio.write(&command, sizeof(command)) == false);
+
+          Serial.println("SEND READ`");
         }
 
         state++;
@@ -160,10 +136,12 @@ void loop(){
          switch(command){
             case FORWARD :
               Drive.forward(50);
+              delay(100);
               break;
 
             case REVERSE:
               Drive.backward(50);
+              delay(100);
               break;
 
             case LEFT:
@@ -182,6 +160,8 @@ void loop(){
               Drive.stopMotor();
               break;
           }
+         
+      Drive.stopMotor();
       state++;
       break;
 /**********************************************************************************************/
@@ -194,7 +174,7 @@ void loop(){
       state++;
       break;
 /**********************************************************************************************/      
-    }
+    
   }
-}  
+}
  
