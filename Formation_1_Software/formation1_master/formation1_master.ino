@@ -29,7 +29,7 @@
 #define DEBUG_SEND
 #define DEBUG_MOVE
 #define DEBUG_UPDATE
-#define NUM_SLAVES 3
+#define NUM_SLAVES 1
 
 RF24 Radio(CE, CSN);
 Adafruit_VL6180X distSensor = Adafruit_VL6180X(); 
@@ -48,10 +48,11 @@ bot sBot[NUM_SLAVES];
 #define RIGHT   4
 
 bool result     = false;
-bool isReady    = true;
+bool isReady    = 1;
 int state       = mState;
 uint8_t command = 0x00;
-unsigned int commandPipe  =  0xFF;
+uint8_t commandTemp;
+uint8_t commandPipe[]  =  { 0xCC,0xCE,0xCC,0xCE,0xCC };
 
 void setup(){
     Serial.begin(9600);
@@ -60,9 +61,10 @@ void setup(){
     Radio.openWritingPipe(commandPipe);
     Radio.stopListening();
     Radio.setPALevel(RF24_PA_MIN);
-    Radio.printDetails();
+    Radio.printDetails(); 
     Drive.stopMotor();
     Swarm.initializeBot(sBot, NUM_SLAVES);
+    delay(100);
 }
 
 void loop(){
@@ -76,16 +78,22 @@ void loop(){
           Serial.println("IDLE");
         #endif
         
-        while(command == STOP){
+        while(commandTemp == STOP){
           /* Sends a isReady boolen value to the command center */
           RF.writingPipe(&Radio, commandPipe);
           while(Radio.write(&isReady, sizeof(isReady)) == false);
           Serial.println("IDLE WRITE");
-
           /* Reads in command data from command center */
+          Serial.print("FIFO FULL?: "); Serial.println(Radio.rxFifoFull());
           RF.readPipe(&Radio, 1, commandPipe);
-          Radio.read(&command, sizeof(command));
-          Serial.println(command);  
+          for(int i = 0; i<100; i++){
+            Radio.read(&command, sizeof(command));
+            if(command != 0){
+              commandTemp = command;
+              }
+            Serial.println(command); 
+          }
+
         }
         
         
@@ -171,7 +179,7 @@ void loop(){
           Serial.println("UPDATE");
         #endif
         
-      state++;
+      state = M_IDLING;
       break;
 /**********************************************************************************************/      
     
