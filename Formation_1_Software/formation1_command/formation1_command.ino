@@ -26,18 +26,37 @@
 #include "swarmAlgorithm.h"
 #include "commandCenter.h"
 RF24 Radio(9,10);
-unsigned int commandPipe  =  0xff;
+uint8_t commandPipe[]  =  {0xCC, 0xCE, 0xCC, 0xCE, 0xCC};
 
 RF_Sense RF;                                            //initalizes RF class
 
-uint8_t command = 0x00;                                 //default value for command to be sent from master
+uint8_t command = 0;                                 //default value for command to be sent from master
 bool isReady;
 
-unsigned int  STOP = 0x00;                                      //value to stop motors
-unsigned int  FORWARD = 0x01;                                   //value to move forward
-unsigned int  REVERSE = 0x02;                                   //value to move backwards
-unsigned int  LEFT = 0x03 ;                                     //value to pivot left
-unsigned int  RIGHT = 0x04;                                     //value to pivot right
+#define STOP 0
+#define FORWARD 1
+#define REVERSE 2
+#define LEFT 3
+#define RIGHT 4
+//unsigned int  STOP = 0x00;                                      //value to stop motors
+//unsigned int  FORWARD = 0x01;                                   //value to move forward
+//unsigned int  REVERSE = 0x02;                                   //value to move backwards
+//unsigned int  LEFT = 0x03 ;                                     //value to pivot left
+//unsigned int  RIGHT = 0x04;                                     //value to pivot right
+
+
+int const UP_BTN = 2;
+int const DOWN_BTN = 4;
+int const LEFT_BTN = 5;
+int const RIGHT_BTN = 3;
+int const E_BTN = 6;
+int const F_BTN = 7;
+int const JOYSTICK_BTN = 8;
+int const JOYSTICK_AXIS_X = A0;
+int const JOYSTICK_AXIS_Y = A1;
+int buttons[] = { UP_BTN, DOWN_BTN, LEFT_BTN, RIGHT_BTN, E_BTN, F_BTN, JOYSTICK_BTN };
+
+
 
 enum commandState{
   C_IDLING = 0,
@@ -68,18 +87,18 @@ void setup() {
 
 
 void loop() {
-  digitalWrite(LED_BUILTIN, LOW);                     //turn the LED off by making the voltage LOW
   
   isReady = 0;
   //Serial.println(commandPipe);
-  RF.readPipe(&Radio, 1, commandPipe);
-  while(Radio.available()){
-
+  //RF.readPipe(&Radio, 1, commandPipe);
+ // while(Radio.available(&commandPipe)){
+    Serial.println("Start");
     switch(cState){
       case C_IDLING:
                             //opens rf pipe      
             Serial.print("isntReady: ");
             Serial.println(isReady);
+            RF.readPipe(&Radio, 1, commandPipe);
             Radio.read(&isReady, sizeof(isReady));
             if (isReady == 1){
               digitalWrite(LED_BUILTIN, HIGH);
@@ -89,6 +108,7 @@ void loop() {
               isReady = 0;
             }
             else{
+              digitalWrite(LED_BUILTIN, LOW);                     //turn the LED off by making the voltage LOW
               cState = C_IDLING;
             }
             break;
@@ -137,13 +157,18 @@ void loop() {
             
     case C_SEND:
             Serial.print("Sending command: ");
-            Serial.println("command");
+            Serial.println(command);
+ 
             RF.writingPipe(&Radio, commandPipe);
-            Radio.write(&command, sizeof(command));
+            for(int i = 0; i < 10; i ++)  {          
+             Radio.write(&command, sizeof(command));
+            Serial.println(command);}
+            bool ok = Radio.txStandBy(10000);
+            Serial.println(ok);
             Serial.println("command sent ");
             Serial.println(" ");
             cState = C_IDLING;
             break;
    }
-  }
+  //}
 }
