@@ -19,8 +19,8 @@ RF24 radioComm (CE, CSN) //(CE, CNS) adio commincator line
 class RF_Sense {
 public:
 
-	void readPipe(RF24* rfClass, uint8_t number, uint64_t pipe);
-	void writingPipe(RF24* rfClass, uint64_t pipe);
+	void readPipe(RF24* rfClass, uint8_t number, uint8_t *pipe);
+	void writingPipe(RF24* rfClass, uint8_t *pipe);
 };
 
 #endif
