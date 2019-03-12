@@ -24,7 +24,8 @@
 */
 
 #include "swarmAlgorithm.h"
-#include "commandCenter.h"
+#include <printf.h>
+//#include "commandCenter.h"
 RF24 Radio(9,10);
 uint8_t commandPipe[]  =  {0xCC, 0xCE, 0xCC, 0xCE, 0xCC};
 
@@ -32,19 +33,6 @@ RF_Sense RF;                                            //initalizes RF class
 
 uint8_t command = 0;                                 //default value for command to be sent from master
 bool isReady;
-
-#define STOP 0
-#define FORWARD 1
-#define REVERSE 2
-#define LEFT 3
-#define RIGHT 4
-//unsigned int  STOP = 0x00;                                      //value to stop motors
-//unsigned int  FORWARD = 0x01;                                   //value to move forward
-//unsigned int  REVERSE = 0x02;                                   //value to move backwards
-//unsigned int  LEFT = 0x03 ;                                     //value to pivot left
-//unsigned int  RIGHT = 0x04;                                     //value to pivot right
-
-
 int const UP_BTN = 2;
 int const DOWN_BTN = 4;
 int const LEFT_BTN = 5;
@@ -96,7 +84,7 @@ void loop() {
     switch(cState){
       case C_IDLING:
                             //opens rf pipe      
-            Serial.print("isntReady: ");
+            Serial.print("isReady: ");
             Serial.println(isReady);
             RF.readPipe(&Radio, 1, commandPipe);
             Radio.read(&isReady, sizeof(isReady));
