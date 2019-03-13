@@ -44,46 +44,71 @@ bot sBot;                                               //initalizes slave bot (
 //swarm Swarm;                                          //initalizes swarm class
 
 unsigned int commandPipe  =  0xFF;                      //pipe for command bot pipline
-unsigned int slavePipe [] = {0x01, 0x02, 0x03, 0x04};   //different addresses for each smaster slave bot pipeline
+uint8_t slavePipe [] = {0x01, 0x02, 0x03, 0x04};   //different addresses for each smaster slave bot pipeline
 int slaveNum = sName;                                   //sets slave name to an integer
 
-uint8_t command = 0x00;                                 //default value for command to be sent from master
+//uint8_t Stop = 0x00;                                    //value to stop motors
+//uint8_t Forward = 0x01;                                 //value to move forward
+//uint8_t Reverse = 0x02;                                 //value to move backwards
+//uint8_t Left = 0x03;                                    //value to pivot left
+//uint8_t Right = 0x04;                                   //value to pivot right
+uint8_t command = 0;                                 //default value for command to be sent from master
+uint8_t commandTemp = 0;
+
+
+#define STOP 0                                      //value to stop motors
+#define FORWARD 1                                   //value to move forward
+#define REVERSE 2                                   //value to move backwards
+#define LEFT 3                                      //value to pivot left
+#define RIGHT 4                                     //value to pivot right
+
 
 void setup(){
-    Serial.begin(9600);               
+    sBot.pipe = slavePipe[0];
+    sName = SLAVE0;
+    Serial.begin(9600); 
     Radio.begin();
     Radio.openReadingPipe(1, sBot.pipe);
     Radio.startListening();
     Radio.setPALevel(RF24_PA_MIN);
-    //printf_begin(); 
-    //Radio.printDetails();
+    printf_begin(); 
+    Radio.printDetails();
     Drive.stopMotor();                                  //begin with motors stopped
 
-    
+    Serial.println("**************************************************************");
     while(!Serial){                                     // wait for serial port to open on native usb devices
         delay(1);
     }
 }
 
 void loop(){
-   sBot.pipe = slavePipe[0];                            //NEED TO HARDCODE WHICH SLAVE THIS IS
-   sName = SLAVE0;                                      //HARDCODES SLAVE NAME AND NUMBER 
+  // sBot.pipe = 0x01;                            //NEED TO HARDCODE WHICH SLAVE THIS IS
+   //sName = SLAVE0;                                      //HARDCODES SLAVE NAME AND NUMBER 
    RF.readPipe(&Radio, slaveNum, sBot.pipe);            //opens radio for specific slave using slave number and slave pipe address
-   RF.writingPipe(&Radio, sBot.pipe);                   //opens radio for specific slave using the slave pipe address
+   //RF.writingPipe(&Radio, sBot.pipe);                   //opens radio for specific slave using the slave pipe address
 
-    while(Radio.available()){
+  // Serial.println("Begin");
+    //while(Radio.available()){
+    bool isReadyTemp = 0;
 
       switch(sState) {                                  //state machinefor slave
 /**********************************************************************************************/
         case S_IDLING:                                  //IDLING state: waits until master is ready to send command
           #ifdef DEBUG_IDLE                             //debug statement
           Serial.println("IDLE");
-         #endif
-
+          #endif
+        //  Serial.println("IDLE");
           bool isReady;                                 //bool for determing next state
-          isReady = false;
-          Radio.read(&isReady, sizeof(isReady));        //reads rf sensor for isReady bool
-          if(isReady == false){                         //if master is not ready, then slave stays in idle
+          isReady = 0;
+          for(int i = 0; i < 10; i ++){
+            Radio.read(&isReady, sizeof(isReady));        //reads rf sensor for isReady bool
+            //Serial.println(isReady);
+            if(isReady != 0){
+              isReadyTemp = isReady;
+            }
+          }
+          Serial.print("isReadyTemp: "); Serial.println(isReadyTemp);
+          if(isReadyTemp == 0){                         //if master is not ready, then slave stays in idle
             sState = S_IDLING;
           }
           else{                                         //if master is ready, slave goes to RECEIVE to get command
@@ -92,12 +117,20 @@ void loop(){
         break;
 /**********************************************************************************************/
         case S_RECEIVE:                                 //RECEIVE state: slave gets command from the master of how to move
+
+          for (int i = 0; i < 10; i++){
+             Radio.read(&command, sizeof(command));        //reads rf sensor for command
+             Serial.println(command);
+             if(command != 0){
+              commandTemp = command;
+             }
+          }
+          sState = S_MOVE;                              //slave goes to MOVE state
           #ifdef DEBUG_RECEIVE                          //debug statement
           Serial.println("RECEIVE");
+          Serial.print("commandTemp: ");
+          Serial.println(commandTemp);
           #endif
-
-          Radio.read(&command, sizeof(command));        //reads rf sensor for command
-          sState = S_MOVE;                              //slave goes to MOVE state
         break;
 /**********************************************************************************************/
         case S_MOVE:                                    //MOVE state: lave executes whatever command it is given
@@ -105,24 +138,26 @@ void loop(){
           Serial.println("MOVE");           
           #endif
           
-          switch(command){                              //switch case statement of possible movements for the slave to receive
-            case 0x01:                                  //case 0x01: drive forward at a standard speed
+          switch(commandTemp){                              //switch case statement of possible movements for the slave to receive
+            case 1:                                  //case 0x01: drive forward at a standard speed
               Drive.forward(50);                        //calls drive class that holds forward(int speed) function
+              delay(100);
               break;
 
-            case 0x02:                                  //case 0x02: drive backwards at a standard speed
+            case 2:                                  //case 0x02: drive backwards at a standard speed
               Drive.backward(50);                       //calls drive class that holds backward(int speed) function
+              delay(100);
               break;
 
-            case 0x03:                                  //case 0x03: pivot left (rotate left)
+            case 3:                                  //case 0x03: pivot left (rotate left)
               Drive.left90DegreeTurn();                 //calls drive class that holds left90DegreeTurn() function
               break;
 
-            case 0x04:
+            case 4:
               Drive.right90DegreeTurn();                //case 0x04: pivot right (rotate right)
               break;                                    //calls drive class that holds right90DegreeTurn() function
 
-            case 0x00:                                  //case 0x00: stop driving
+            case 0:                                  //case 0x00: stop driving
               Drive.stopMotor();                        //calls drive class that holds stopMotor() function
               break;
 
@@ -130,24 +165,15 @@ void loop(){
               Drive.stopMotor();                        //calls drive class that holds stopMotor() function
               break;
           }
-          sState = S_SEND;                              //slave goes to SEND state after executing the command
+          Drive.stopMotor();
+          sState = S_IDLING;                              //slave goes to SEND state after executing the command
         break;
 /**********************************************************************************************/
-        case S_SEND:                                    //SEND case: sends a bool back to the master to tell the master that the command has been completed
-          #ifdef DEBUG_SEND                             //debug statement
-          Serial.println("SEND");
-          #endif
-
-          bool isComplete;                              //bool used to send messge to master
-          isComplete = true;
-          Radio.write(&isComplete, sizeof(isComplete)); //wirtes the message to the master via the rf sensor
-          sState = S_IDLING;                            //slave goes back to IDLING to wait for next command
-        break;
-/**********************************************************************************************/
+      
         default:                                        //default state: sends slave to IDLING
           sState = S_IDLING;                            
       }
-    }
+    //}
   
 
 }   
