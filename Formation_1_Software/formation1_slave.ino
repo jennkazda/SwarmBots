@@ -1,9 +1,9 @@
 /*  AUTHOR: Josue Mendez & Jenn Kazda
 /*  ===================================================================
-*   FILE: formation1_slave.c
-*   MODULE: formation1_slave
+*   FILE: Swarm_Algorithm_Master.c
+*   MODULE: Swarm_Algorithm_Master
 *
-*   TITLE: Slave Bot Algorithm for Formation #1
+*   TITLE: Master Bot Algorithm for Formation #1
 *
 *   MODULE DESCRIPTION:
 *   
@@ -18,162 +18,318 @@
 *   Rev     Date        Init
 *           Changes
 *   -----   --------    -----
-*   1.1     2019-03-08  JK
+*   1.1     2019-03-05  JM
 *           Initial Revision.
-*   1.2     2019-03-09  JK
-*           ADDED COMMENTS, MADE CHANGES TO ACCOMADATE MULTIPLE SLAVE BOTS.
 */
-#include "swarmAlgorithm.h"
 
+  //////////////
+  // INCLUDES //
+  //////////////
+  
+  #include <SPI.h>    
+  #include <Wire.h> 
+  #include <RF24.h>
+  #include <printf.h>
+//  #include "Adafruit_VL6180X.h"
 
+  /////////////
+  // DEFINES //
+  /////////////
+  #define STOP    0x00                                      
+  #define FORWARD 0x01                                   
+  #define REVERSE 0x02                                   
+  #define LEFT    0x03                                      
+  #define RIGHT   0x04      
 
-#define DEBUG_IDLE                                      //debug define for IDLING state
-#define DEBUG_SEND                                      //debug define for SEND state
-#define DEBUG_MOVE                                      //debug define for MOVE state
-#define DEBUG_RECEIVE                                   //debug define for RECEIVE state
+  #define SLAVE_ID 1
 
+  #define DEBUG
 
-RF24 Radio(CE, CSN);                                    //initalizes Radio with correct pins
+  // State machine for SLAVE_ID bot //
+  enum SLAVE_IDState{
+    S_IDLING = 0,
+    S_MOVE
+  };
+  SLAVE_IDState sState;
 
-drive Drive;                                            //initalizes Drive class
-RF_Sense RF;                                            //initalizes RF class
-slaveState sState;                                      //initalizes slave state enum
-slaveName sName;                                        //initalizes slave name enum
-bot sBot;                                               //initalizes slave bot (only one is needed for slave code, needs to be hardcoded in main for each bot)
+   // Characteristics of each bot //
+  struct bot 
+  {
+    float x;
+    float y;
+    unsigned int pipe;
+    byte lastMove;
+    byte direction;
+  };
+  
+  ///////////////////////////
+  // FUNCTION DECLARATIONS //
+  ///////////////////////////
+  
+  // Motor //
+  void forward();
+  void backward();  
+  void rightTurn();
+  void leftTurn();
+  void stopMotor();
+  void right90DegreeTurn();
+  void left90DegreeTurn();
 
-//swarm Swarm;                                          //initalizes swarm class
+  // RF //
+  void readPipe(uint8_t pipeNumber, uint8_t pipeAddress);
+  void writePipe(uint8_t pipeAddress);
 
-unsigned int commandPipe  =  0xFF;                      //pipe for command bot pipline
-uint8_t slavePipe [] = {0x01, 0x02, 0x03, 0x04};   //different addresses for each smaster slave bot pipeline
-int slaveNum = sName;                                   //sets slave name to an integer
+  ///////////////
+  // VARIABLES //
+  ///////////////
+  const byte STDBYE = 12;
+  const byte AIN1 = 4;
+  const byte AIN2 = 5;
+  const byte PWMA = 3;
+  const byte BIN1 = 7;
+  const byte BIN2 = 8;
+  const byte PWMB = 10;
+  const byte CE = 9;
+  const byte CSN = 6;
+  int state = sState;
+  uint8_t command;
+  uint8_t commandPipe[5]  = {'C','O','M','M','1'};
+  uint8_t slaveAddresses[3][5] = {
+    {'S','L','A','V','1'},
+    {'S','L','A','V','2'},
+    {'S','L','A','V','3'}
+  };
+  // int remoteNodeData[2] = {1,1};
+  
+  /////////////////////
+  // INITIALIZATIION //
+  /////////////////////
+  
+  RF24 radio(CE, CSN);
+//  Adafruit_VL6180X distSensor = Adafruit_VL6180X();
+  
+void setup() {
+    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(STDBYE, OUTPUT);
+    pinMode(AIN1, OUTPUT);
+    pinMode(AIN2, OUTPUT);
+    pinMode(PWMA, OUTPUT);
+    pinMode(BIN1, OUTPUT);
+    pinMode(BIN2, OUTPUT);
+    pinMode(PWMB, OUTPUT);
+    
+    Serial.begin(115200);
+    printf_begin();
 
-//uint8_t Stop = 0x00;                                    //value to stop motors
-//uint8_t Forward = 0x01;                                 //value to move forward
-//uint8_t Reverse = 0x02;                                 //value to move backwards
-//uint8_t Left = 0x03;                                    //value to pivot left
-//uint8_t Right = 0x04;                                   //value to pivot right
-uint8_t command = 0;                                 //default value for command to be sent from master
-uint8_t commandTemp = 0;
+   #ifdef DEBUG
+    Serial.println("Initializing...");
+    delay(500);
+   #endif
+    
+    /* Begin radio object */
+    radio.begin();
 
+    /* Setup read pipe to remote node */
+    radio.openReadingPipe(1, slaveAddresses[SLAVE_ID]);
+    radio.startListening();
 
-#define STOP 0                                      //value to stop motors
-#define FORWARD 1                                   //value to move forward
-#define REVERSE 2                                   //value to move backwards
-#define LEFT 3                                      //value to pivot left
-#define RIGHT 4                                     //value to pivot right
+    /* Set power level of the radio */
+    radio.setPALevel(RF24_PA_LOW);
 
+    /* Set radio channel to use - ensure all SLAVE_IDs match this */
+    radio.setChannel(0x69);
 
-void setup(){
-    sBot.pipe = slavePipe[0];
-    sName = SLAVE0;
-    Serial.begin(9600); 
-    Radio.begin();
-    Radio.openReadingPipe(1, sBot.pipe);
-    Radio.startListening();
-    Radio.setPALevel(RF24_PA_MIN);
-    printf_begin(); 
-    Radio.printDetails();
-    Drive.stopMotor();                                  //begin with motors stopped
+    /* Set time between retries and max no. of retries */
+    radio.setRetries(4, 10);
 
-    Serial.println("**************************************************************");
-    while(!Serial){                                     // wait for serial port to open on native usb devices
-        delay(1);
-    }
+    /* Enable ackpayload - enables each SLAVE_ID to reply with data */
+    //radio.enableAckPayload();
+
+    /* Preload the payload with initial data */
+    // radio.writeAckPayload(1, &remoteNodeData, sizeof(remoteNodeData));
+    
+    /* Print out radio configuration data on serial monitor */
+    radio.printDetails();
+
+    /* Initializes bot to no motor movement */
+    stopMotor();
+    
+    #ifdef DEBUG
+      Serial.println("Setup complete!");
+      delay(500);
+    #endif
 }
 
-void loop(){
-  // sBot.pipe = 0x01;                            //NEED TO HARDCODE WHICH SLAVE THIS IS
-   //sName = SLAVE0;                                      //HARDCODES SLAVE NAME AND NUMBER 
-   RF.readPipe(&Radio, slaveNum, sBot.pipe);            //opens radio for specific slave using slave number and slave pipe address
-   //RF.writingPipe(&Radio, sBot.pipe);                   //opens radio for specific slave using the slave pipe address
-
-  // Serial.println("Begin");
-    //while(Radio.available()){
-    bool isReadyTemp = 0;
-
-      switch(sState) {                                  //state machinefor slave
-/**********************************************************************************************/
-        case S_IDLING:                                  //IDLING state: waits until master is ready to send command
-          #ifdef DEBUG_IDLE                             //debug statement
-          Serial.println("IDLE");
-          #endif
-        //  Serial.println("IDLE");
-          bool isReady;                                 //bool for determing next state
-          isReady = 0;
-          for(int i = 0; i < 10; i ++){
-            Radio.read(&isReady, sizeof(isReady));        //reads rf sensor for isReady bool
-            //Serial.println(isReady);
-            if(isReady != 0){
-              isReadyTemp = isReady;
-            }
-          }
-          Serial.print("isReadyTemp: "); Serial.println(isReadyTemp);
-          if(isReadyTemp == 0){                         //if master is not ready, then slave stays in idle
-            sState = S_IDLING;
-          }
-          else{                                         //if master is ready, slave goes to RECEIVE to get command
-            sState = S_RECEIVE;
-          }
-        break;
-/**********************************************************************************************/
-        case S_RECEIVE:                                 //RECEIVE state: slave gets command from the master of how to move
-
-          for (int i = 0; i < 10; i++){
-             Radio.read(&command, sizeof(command));        //reads rf sensor for command
-             Serial.println(command);
-             if(command != 0){
-              commandTemp = command;
-             }
-          }
-          sState = S_MOVE;                              //slave goes to MOVE state
-          #ifdef DEBUG_RECEIVE                          //debug statement
-          Serial.println("RECEIVE");
-          Serial.print("commandTemp: ");
-          Serial.println(commandTemp);
-          #endif
-        break;
-/**********************************************************************************************/
-        case S_MOVE:                                    //MOVE state: lave executes whatever command it is given
-          #ifdef DEBUG_MOVE                             //debug statement
-          Serial.println("MOVE");           
-          #endif
-          
-          switch(commandTemp){                              //switch case statement of possible movements for the slave to receive
-            case 1:                                  //case 0x01: drive forward at a standard speed
-              Drive.forward(50);                        //calls drive class that holds forward(int speed) function
-              delay(100);
-              break;
-
-            case 2:                                  //case 0x02: drive backwards at a standard speed
-              Drive.backward(50);                       //calls drive class that holds backward(int speed) function
-              delay(100);
-              break;
-
-            case 3:                                  //case 0x03: pivot left (rotate left)
-              Drive.left90DegreeTurn();                 //calls drive class that holds left90DegreeTurn() function
-              break;
-
-            case 4:
-              Drive.right90DegreeTurn();                //case 0x04: pivot right (rotate right)
-              break;                                    //calls drive class that holds right90DegreeTurn() function
-
-            case 0:                                  //case 0x00: stop driving
-              Drive.stopMotor();                        //calls drive class that holds stopMotor() function
-              break;
-
-            default:                                    //default case: stop driving
-              Drive.stopMotor();                        //calls drive class that holds stopMotor() function
-              break;
-          }
-          Drive.stopMotor();
-          sState = S_IDLING;                              //slave goes to SEND state after executing the command
-        break;
-/**********************************************************************************************/
-      
-        default:                                        //default state: sends slave to IDLING
-          sState = S_IDLING;                            
-      }
-    //}
+void loop() {
   
+  #ifdef DEBUG
+      Serial.println("Starting main loop...");
+      int sensorValueA = analogRead(PWMA);
+      int sensorValueB = analogRead(PWMB);
+      float voltageA = sensorValueA * (5.0/ 255.0);
+      float voltageB = sensorValueB * (5.0/ 255.0);
 
-}   
+      Serial.print("Volt A: "); Serial.println(voltageA);
+      Serial.print("Volt B: "); Serial.println(voltageB);
+  #endif
+  
+  //while(radio.available()){
+  
+  delay(1000);
+  //radio.flush_rx();
+  switch(state)
+  {
+  /***********************************************************************/
+  case S_IDLING:
+    #ifdef DEBUG
+      Serial.println("IDLE");
+    #endif
+    
+    while(command == STOP)
+    {
+      radio.openReadingPipe(1, slaveAddresses[SLAVE_ID]);
+      radio.startListening();
+      radio.read(&command, sizeof(command));
+       digitalWrite(LED_BUILTIN, HIGH); 
+              
+    }  
+      radio.stopListening();
+      radio.flush_tx();
+    #ifdef DEBUG
+      Serial.println("IDLE complete!");
+      Serial.println(command);
+    #endif
+    
+    state++;
+  break;
+  /***********************************************************************/
+  case S_MOVE:
+
+    #ifdef DEBUG
+          Serial.println("MOVE");
+        #endif
+
+         /* Master moves according to command data */
+         switch(command){
+            case FORWARD :
+              Serial.println('A');
+              forward();
+              delay(100);
+              break;
+
+            case REVERSE:
+              Serial.println('B');
+              backward();
+              delay(100);
+              break;
+
+            case LEFT:
+              Serial.println('C');
+              leftTurn();
+              delay(100);
+              break;
+
+            case RIGHT:
+              Serial.println('D');
+              rightTurn();
+              delay(100);
+              break;
+
+            case STOP:
+              Serial.println('E');
+              stopMotor();
+              delay(100);
+              break;
+
+            default:
+              Serial.println('F');
+              stopMotor();
+              delay(100);
+              break;
+          }
+      Serial.println('G');
+      stopMotor();
+      Serial.println('H');
+      command = STOP;
+      digitalWrite(LED_BUILTIN, LOW); 
+      delay(100);
+      state = S_IDLING;
+    
+    #ifdef DEBUG
+      Serial.println("MOVE complete");
+    #endif
+  break;
+  /***********************************************************************/
+  }
+  
+} 
+void forward() {
+  digitalWrite(STDBYE, HIGH);
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, HIGH);
+  analogWrite(PWMA, 75);
+  analogWrite(PWMB, 75);
+  delay(500);
+  stopMotor();
+}
+
+void rightTurn() {
+  digitalWrite(STDBYE, HIGH);
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(BIN2, LOW);
+  analogWrite(PWMA, 75);
+  analogWrite(PWMB, 75);
+  delay(600);
+  stopMotor();
+}
+
+void leftTurn() {
+  digitalWrite(STDBYE, HIGH);
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, HIGH);
+  analogWrite(PWMA, 75);
+  analogWrite(PWMB, 75);
+  delay(500);
+  stopMotor();
+}
+
+void backward() {
+  digitalWrite(STDBYE, HIGH);
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(BIN2, LOW);
+  analogWrite(PWMA, 75);
+  analogWrite(PWMB, 75);
+  delay(500);
+  stopMotor();
+}
+
+void stopMotor() {
+  digitalWrite(STDBYE, LOW);
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, LOW);
+  analogWrite(PWMA, 0);
+  analogWrite(PWMB, 0);
+}
+
+
+//void readPipe(uint8_t pipeNumber, uint8_t pipeAddress)
+//{
+//  radio.openReadingPipe(pipeNumber, pipeAddress);
+//  radio.startListening();
+//}
+//
+//void writePipe(uint8_t pipeAddress)
+//{
+//  radio.openWritingPipe(pipeAddress);
+//  radio.stopListening();  
+//}
