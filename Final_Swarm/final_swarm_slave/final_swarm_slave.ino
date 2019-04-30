@@ -46,11 +46,11 @@
   #define DEBUG
 
   // State machine for SLAVE_ID bot //
-  enum SLAVE_IDState{
+  enum slaveState{
     S_IDLING = 0,
     S_MOVE
   };
-  SLAVE_IDState sState;
+  slaveState sState;
 
    // Characteristics of each bot //
   struct bot 
@@ -65,6 +65,10 @@
   ///////////////////////////
   // FUNCTION DECLARATIONS //
   ///////////////////////////
+
+  // Interrupt //
+  void trackDistanceL();
+  void trackDistanceR();
   
   // Motor //
   void forward();
@@ -82,15 +86,26 @@
   ///////////////
   // VARIABLES //
   ///////////////
+  volatile bool canMove, turning;
+  int runningGoal = 0;
+  int currentCountR = 0;
+  int currentCountL = 0;
+  int turningCountR = 0;
+  int turningCountL = 0;
+  int turningGoalR = 0;
+  int turningGoalL = 0;
+  int counter = 0;
+  const byte interruptPinL = 2;
+  const byte interruptPinR = 69;
   const byte STDBYE = 12;
   const byte AIN1 = 4;
   const byte AIN2 = 5;
-  const byte PWMA = 3;
+  const byte PWMA = 3; //  was 3 before
   const byte BIN1 = 7;
   const byte BIN2 = 8;
   const byte PWMB = 10;
   const byte CE = 9;
-  const byte CSN = 6;
+  const byte CSN = 6; // was 6 before
   int state = sState;
   uint8_t command;
   uint8_t commandPipe[5]  = {'C','O','M','M','1'};
@@ -107,17 +122,139 @@
   
   RF24 radio(CE, CSN);
 //  Adafruit_VL6180X distSensor = Adafruit_VL6180X();
+
+
+
+  // Interrupt //
+  void trackDistanceR() {
+  if (turning) {
+    turningCountR++;
+    if (turningCountR > turningGoalR) {
+      canMove = false;
+      turning = false;
+      turningCountR = 0;
+    }
+  }
+  else {
+    currentCountR++;
+    if (currentCountR > runningGoal) {
+      canMove = false;
+      currentCountR = 0;
+    }
+  }
+}
+
+void trackDistanceL() {
+  if (turning) {
+    turningCountL++;
+    if (turningCountL > turningGoalL) {
+      canMove = false;
+      turning = false;
+      turningCountL = 0;
+    }
+  }
+  else {
+    currentCountL++;
+    if (currentCountL > runningGoal) {
+      canMove = false;
+      currentCountL = 0;
+    }
+  }
+  Serial.print("Ticks: "); Serial.println(turningCountL);
+}
+  
+
+void forward() {
+  turning = false;
+  canMove = true;
+  runningGoal = 10;
+  while(currentCountL < runningGoal){
+  digitalWrite(STDBYE, HIGH);
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, HIGH);
+  analogWrite(PWMA, 75);
+  analogWrite(PWMB, 75);
+  }
+}
+void rightTurn() {
+  turning = true;
+  canMove = true;
+  turningGoalL = 7;
+  while (turningCountL < turningGoalL){
+  
+  digitalWrite(STDBYE, HIGH);
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, HIGH);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(BIN2, LOW);
+  analogWrite(PWMA, 75);
+  analogWrite(PWMB, 75);
+  //delay(500);
+  }
+
+//    if(turningCountR < turningCountL){
+//        digitalWrite(STDBYE, HIGH);
+//        digitalWrite(AIN1, LOW);
+//        digitalWrite(AIN2, HIGH);
+//        digitalWrite(BIN1, HIGH);
+//        digitalWrite(BIN2, LOW);
+//        analogWrite(PWMA, 75);
+//        analogWrite(PWMB, 75);
+//    }
+//    else if (turningCountR > turningCountL){  
+//      digitalWrite(STDBYE, HIGH);
+//      digitalWrite(AIN1, HIGH);
+//      digitalWrite(AIN2, LOW);
+//      digitalWrite(BIN1, LOW);
+//      digitalWrite(BIN2, HIGH);
+//      analogWrite(PWMA, 75);
+//      analogWrite(PWMB, 75);}
+}
+void leftTurn() {
+  turning = true;
+  canMove = true;
+  turningGoalL = 7;
+  while (turningCountL < turningGoalL){
+  digitalWrite(STDBYE, HIGH);
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, HIGH);
+  analogWrite(PWMA, 75);
+  analogWrite(PWMB, 75);
+  }
+}
+
+void stopMotor() {
+  digitalWrite(STDBYE, LOW);
+  digitalWrite(AIN1, LOW);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, LOW);
+  digitalWrite(BIN2, LOW);
+  analogWrite(PWMA, 0);
+  analogWrite(PWMB, 0);
+}
+
+void backward() {
+  turning = false;
+  canMove = true;
+  runningGoal = 10;
+  while(currentCountL < runningGoal){
+  digitalWrite(STDBYE, HIGH);
+  digitalWrite(AIN1, HIGH);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(BIN2, LOW);
+  analogWrite(PWMA, 75);
+  analogWrite(PWMB, 75);
+  }
+}
+
+
   
 void setup() {
-    pinMode(LED_BUILTIN, OUTPUT);
-    pinMode(STDBYE, OUTPUT);
-    pinMode(AIN1, OUTPUT);
-    pinMode(AIN2, OUTPUT);
-    pinMode(PWMA, OUTPUT);
-    pinMode(BIN1, OUTPUT);
-    pinMode(BIN2, OUTPUT);
-    pinMode(PWMB, OUTPUT);
-    
     Serial.begin(115200);
     printf_begin();
 
@@ -125,6 +262,10 @@ void setup() {
     Serial.println("Initializing...");
     delay(500);
    #endif
+
+    /* Encoder interrupts */
+    attachInterrupt(digitalPinToInterrupt(interruptPinR), trackDistanceR, RISING);
+    attachInterrupt(digitalPinToInterrupt(interruptPinL), trackDistanceL, RISING);
     
     /* Begin radio object */
     radio.begin();
@@ -164,19 +305,12 @@ void loop() {
   
   #ifdef DEBUG
       Serial.println("Starting main loop...");
-      int sensorValueA = analogRead(PWMA);
-      int sensorValueB = analogRead(PWMB);
-      float voltageA = sensorValueA * (5.0/ 255.0);
-      float voltageB = sensorValueB * (5.0/ 255.0);
-
-      Serial.print("Volt A: "); Serial.println(voltageA);
-      Serial.print("Volt B: "); Serial.println(voltageB);
+      Serial.println(state);
   #endif
   
   //while(radio.available()){
   
   delay(1000);
-  //radio.flush_rx();
   switch(state)
   {
   /***********************************************************************/
@@ -184,17 +318,21 @@ void loop() {
     #ifdef DEBUG
       Serial.println("IDLE");
     #endif
-    
+    //radio.flush_rx();
     while(command == STOP)
     {
       radio.openReadingPipe(1, slaveAddresses[SLAVE_ID]);
       radio.startListening();
-      radio.read(&command, sizeof(command));
-       digitalWrite(LED_BUILTIN, HIGH); 
-              
+      radio.read(&command, sizeof(command));        
     }  
       radio.stopListening();
       radio.flush_tx();
+      
+    #ifdef DEBUG
+      Serial.println("IDLE complete!");
+      Serial.println(command);
+    #endif
+
     #ifdef DEBUG
       Serial.println("IDLE complete!");
       Serial.println(command);
@@ -244,15 +382,13 @@ void loop() {
             default:
               Serial.println('F');
               stopMotor();
-              delay(100);
               break;
           }
       Serial.println('G');
+      while(canMove);
       stopMotor();
       Serial.println('H');
       command = STOP;
-      digitalWrite(LED_BUILTIN, LOW); 
-      delay(100);
       state = S_IDLING;
     
     #ifdef DEBUG
@@ -262,74 +398,18 @@ void loop() {
   /***********************************************************************/
   }
   
-} 
-void forward() {
-  digitalWrite(STDBYE, HIGH);
-  digitalWrite(AIN1, LOW);
-  digitalWrite(AIN2, HIGH);
-  digitalWrite(BIN1, LOW);
-  digitalWrite(BIN2, HIGH);
-  analogWrite(PWMA, 75);
-  analogWrite(PWMB, 75);
-  delay(500);
-  stopMotor();
-}
-
-void rightTurn() {
-  digitalWrite(STDBYE, HIGH);
-  digitalWrite(AIN1, LOW);
-  digitalWrite(AIN2, HIGH);
-  digitalWrite(BIN1, HIGH);
-  digitalWrite(BIN2, LOW);
-  analogWrite(PWMA, 75);
-  analogWrite(PWMB, 75);
-  delay(600);
-  stopMotor();
-}
-
-void leftTurn() {
-  digitalWrite(STDBYE, HIGH);
-  digitalWrite(AIN1, HIGH);
-  digitalWrite(AIN2, LOW);
-  digitalWrite(BIN1, LOW);
-  digitalWrite(BIN2, HIGH);
-  analogWrite(PWMA, 75);
-  analogWrite(PWMB, 75);
-  delay(500);
-  stopMotor();
-}
-
-void backward() {
-  digitalWrite(STDBYE, HIGH);
-  digitalWrite(AIN1, HIGH);
-  digitalWrite(AIN2, LOW);
-  digitalWrite(BIN1, HIGH);
-  digitalWrite(BIN2, LOW);
-  analogWrite(PWMA, 75);
-  analogWrite(PWMB, 75);
-  delay(500);
-  stopMotor();
-}
-
-void stopMotor() {
-  digitalWrite(STDBYE, LOW);
-  digitalWrite(AIN1, LOW);
-  digitalWrite(AIN2, LOW);
-  digitalWrite(BIN1, LOW);
-  digitalWrite(BIN2, LOW);
-  analogWrite(PWMA, 0);
-  analogWrite(PWMB, 0);
 }
 
 
-//void readPipe(uint8_t pipeNumber, uint8_t pipeAddress)
-//{
-//  radio.openReadingPipe(pipeNumber, pipeAddress);
-//  radio.startListening();
-//}
-//
-//void writePipe(uint8_t pipeAddress)
-//{
-//  radio.openWritingPipe(pipeAddress);
-//  radio.stopListening();  
-//}
+
+void readPipe(uint8_t pipeNumber, uint8_t pipeAddress)
+{
+  radio.openReadingPipe(pipeNumber, pipeAddress);
+  radio.startListening();
+}
+
+void writePipe(uint8_t pipeAddress)
+{
+  radio.openWritingPipe(pipeAddress);
+  radio.stopListening();  
+}
