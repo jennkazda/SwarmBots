@@ -20,6 +20,8 @@
 *   -----   --------    -----
 *   1.1     2019-03-05  JM
 *           Initial Revision.
+*   1.2     2019-04-26  JK
+*           FINAL REVISION
 */
 
   //////////////
@@ -30,7 +32,7 @@
   #include <Wire.h> 
   #include <RF24.h>
   #include <printf.h>
-//  #include "Adafruit_VL6180X.h"
+
 
   /////////////
   // DEFINES //
@@ -41,9 +43,10 @@
   #define LEFT    0x03                                      
   #define RIGHT   0x04      
 
-  #define SLAVE_ID 1
+//************************************//
+  #define SLAVE_ID 1  //CHANGE THIS LINE OF CODE TO MATCH THE NUMBER ON THE SLAVE BOT LABEL
 
-  #define DEBUG
+  #define DEBUG //enables the dEBUG serial print lines
 
   // State machine for SLAVE_ID bot //
   enum slaveState{
@@ -95,17 +98,21 @@
   int turningGoalR = 0;
   int turningGoalL = 0;
   int counter = 0;
+
+  //PIN VARIABLES
   const byte interruptPinL = 2;
   const byte interruptPinR = 69;
   const byte STDBYE = 12;
   const byte AIN1 = 4;
   const byte AIN2 = 5;
-  const byte PWMA = 3; //  was 3 before
+  const byte PWMA = 3; 
   const byte BIN1 = 7;
   const byte BIN2 = 8;
   const byte PWMB = 10;
   const byte CE = 9;
-  const byte CSN = 6; // was 6 before
+  const byte CSN = 6; 
+  
+  
   int state = sState;
   uint8_t command;
   uint8_t commandPipe[5]  = {'C','O','M','M','1'};
@@ -120,12 +127,12 @@
   // INITIALIZATIION //
   /////////////////////
   
-  RF24 radio(CE, CSN);
-//  Adafruit_VL6180X distSensor = Adafruit_VL6180X();
+  RF24 radio(CE, CSN); //RF sensor variable
 
 
-
-  // Interrupt //
+  /////////////////////////
+  // INTERRUPT FUNCTIONS //
+  ////////////////////////
   void trackDistanceR() {
   if (turning) {
     turningCountR++;
@@ -163,8 +170,10 @@ void trackDistanceL() {
   Serial.print("Ticks: "); Serial.println(turningCountL);
 }
   
-
-void forward() {
+  /////////////////////
+  // MOTOR FUNCTIONS //
+  /////////////////////
+void forward() { //goes forward for 10 tick counts
   turning = false;
   canMove = true;
   runningGoal = 10;
@@ -178,7 +187,7 @@ void forward() {
   analogWrite(PWMB, 75);
   }
 }
-void rightTurn() {
+void rightTurn() { //90 degree right turn
   turning = true;
   canMove = true;
   turningGoalL = 7;
@@ -191,28 +200,10 @@ void rightTurn() {
   digitalWrite(BIN2, LOW);
   analogWrite(PWMA, 75);
   analogWrite(PWMB, 75);
-  //delay(500);
   }
 
-//    if(turningCountR < turningCountL){
-//        digitalWrite(STDBYE, HIGH);
-//        digitalWrite(AIN1, LOW);
-//        digitalWrite(AIN2, HIGH);
-//        digitalWrite(BIN1, HIGH);
-//        digitalWrite(BIN2, LOW);
-//        analogWrite(PWMA, 75);
-//        analogWrite(PWMB, 75);
-//    }
-//    else if (turningCountR > turningCountL){  
-//      digitalWrite(STDBYE, HIGH);
-//      digitalWrite(AIN1, HIGH);
-//      digitalWrite(AIN2, LOW);
-//      digitalWrite(BIN1, LOW);
-//      digitalWrite(BIN2, HIGH);
-//      analogWrite(PWMA, 75);
-//      analogWrite(PWMB, 75);}
 }
-void leftTurn() {
+void leftTurn() { //90 degree left turn
   turning = true;
   canMove = true;
   turningGoalL = 7;
@@ -227,7 +218,7 @@ void leftTurn() {
   }
 }
 
-void stopMotor() {
+void stopMotor() { //stops the motors
   digitalWrite(STDBYE, LOW);
   digitalWrite(AIN1, LOW);
   digitalWrite(AIN2, LOW);
@@ -237,7 +228,7 @@ void stopMotor() {
   analogWrite(PWMB, 0);
 }
 
-void backward() {
+void backward() { //drives backward for 10 ticks
   turning = false;
   canMove = true;
   runningGoal = 10;
@@ -253,9 +244,11 @@ void backward() {
 }
 
 
-  
+  /////////////////////
+  // INITIALIZATIION //
+  /////////////////////
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(115200); //sets baudrate of the serial port monitor 
     printf_begin();
 
    #ifdef DEBUG
@@ -263,7 +256,7 @@ void setup() {
     delay(500);
    #endif
 
-    /* Encoder interrupts */
+    /* Enables Encoder Interrupts */
     attachInterrupt(digitalPinToInterrupt(interruptPinR), trackDistanceR, RISING);
     attachInterrupt(digitalPinToInterrupt(interruptPinL), trackDistanceL, RISING);
     
@@ -301,6 +294,9 @@ void setup() {
     #endif
 }
 
+  ////////////////
+  // MAIN CODE //
+  ///////////////
 void loop() {
   
   #ifdef DEBUG
@@ -308,88 +304,81 @@ void loop() {
       Serial.println(state);
   #endif
   
-  //while(radio.available()){
+  
   
   delay(1000);
-  switch(state)
+  ////////////////////
+  // STATE MACHINE //
+  ///////////////////
+  switch(state) 
   {
   /***********************************************************************/
-  case S_IDLING:
+  case S_IDLING: //IDLE state
     #ifdef DEBUG
       Serial.println("IDLE");
     #endif
-    //radio.flush_rx();
+
+    /* reads command form rf sensor */
     while(command == STOP)
     {
-      radio.openReadingPipe(1, slaveAddresses[SLAVE_ID]);
+      radio.openReadingPipe(1, slaveAddresses[SLAVE_ID]); //reads the radio pipe for the specific slave depending on the SLAVE_ID set above
       radio.startListening();
-      radio.read(&command, sizeof(command));        
+      radio.read(&command, sizeof(command));  //reads command form the radio       
     }  
-      radio.stopListening();
+      radio.stopListening(); //finsihed lisening for the command
       radio.flush_tx();
       
     #ifdef DEBUG
       Serial.println("IDLE complete!");
       Serial.println(command);
     #endif
-
-    #ifdef DEBUG
-      Serial.println("IDLE complete!");
-      Serial.println(command);
-    #endif
     
-    state++;
+    state++; //increments to the next state
   break;
   /***********************************************************************/
-  case S_MOVE:
+  case S_MOVE: //MOVE state
 
     #ifdef DEBUG
           Serial.println("MOVE");
         #endif
 
          /* Master moves according to command data */
-         switch(command){
-            case FORWARD :
-              Serial.println('A');
+         switch(command){ //switch statement of the commands that can be given from the master
+            case FORWARD : //case to drive forward
               forward();
               delay(100);
               break;
 
-            case REVERSE:
-              Serial.println('B');
+            case REVERSE: //case to drive backwards
               backward();
               delay(100);
               break;
 
-            case LEFT:
-              Serial.println('C');
+            case LEFT: //case to execute 90 degree left turn
               leftTurn();
               delay(100);
               break;
 
-            case RIGHT:
-              Serial.println('D');
+            case RIGHT: //case to execute 90 degree right turn
               rightTurn();
               delay(100);
               break;
 
-            case STOP:
-              Serial.println('E');
+            case STOP: //case to stop driving
               stopMotor();
               delay(100);
               break;
 
-            default:
-              Serial.println('F');
+            default: //switch statements need a default case: stop driving
               stopMotor();
               break;
           }
-      Serial.println('G');
-      while(canMove);
-      stopMotor();
-      Serial.println('H');
-      command = STOP;
-      state = S_IDLING;
+          
+      while(canMove); //sense loop
+      stopMotor(); 
+      
+      command = STOP; //resets command to STOP to stop motors and receive next command
+      state = S_IDLING; // send the state machine back to the IDLE case
     
     #ifdef DEBUG
       Serial.println("MOVE complete");
@@ -401,14 +390,16 @@ void loop() {
 }
 
 
-
-void readPipe(uint8_t pipeNumber, uint8_t pipeAddress)
+  /////////////////////
+  // RADIO FUNCTIONS //
+  /////////////////////
+void readPipe(uint8_t pipeNumber, uint8_t pipeAddress) //function that sets the reading of the RF sensor
 {
   radio.openReadingPipe(pipeNumber, pipeAddress);
   radio.startListening();
 }
 
-void writePipe(uint8_t pipeAddress)
+void writePipe(uint8_t pipeAddress) //function that sets teh writing to pipe of the RF sensor
 {
   radio.openWritingPipe(pipeAddress);
   radio.stopListening();  
