@@ -19,7 +19,9 @@
 *           Changes
 *   -----   --------    -----
 *   1.1     2019-03-09  JK
-*           Initial Revision.
+*           INITIAL REVISION
+*   1.2     2019-04-25  JK
+*           FINAL REVISION
 *
 */
 
@@ -104,6 +106,10 @@
     {'S','L','A','V','2'},
     {'S','L','A','V','3'}
   };
+
+  ////////////////
+  // FORMATIONS //
+  ////////////////
   uint8_t slaveFormation[3][ARRAY_SIZE] = {
     {FORWARD, FORWARD, LEFT,  FORWARD, FORWARD, LEFT,  FORWARD, FORWARD, LEFT,    FORWARD, FORWARD, LEFT},
     {FORWARD, FORWARD, RIGHT, FORWARD, FORWARD, RIGHT, FORWARD, FORWARD, RIGHT,   FORWARD, FORWARD, RIGHT},
@@ -168,20 +174,24 @@ void setup() {
     initSlaveBot();
 }
 
+
+  ////////////////////
+  // MAIN FUNCITON //
+  ///////////////////
 void loop() {
   bool tx_sent = false;
   uint8_t data = 0;
   isReady = 0;
     
-    switch(cState){
+    switch(cState){  //state machine switch statement
 /***********************************************************************************************************/       
-      case C_IDLING:
+      case C_IDLING: //IDLE state
             /* Do nothing */
-            delay(3000);
-            cState = C_GET;
-/***********************************************************************************************************/ 
-      case C_GET:
-      while( (command == STOP) && (isFormation == false)){
+            delay(3000); //delay and wait for the swarm to do stuff
+            cState = C_GET; //go to get command state
+/****************************************************************** *****************************************/ 
+      case C_GET: //GET COMMAND state
+      while( (command == STOP) && (isFormation == false)){ //gets command from joystick module
             if (!digitalRead(UP_BTN)){
               command = STOP;
             }
@@ -222,24 +232,24 @@ void loop() {
             else {
               command = STOP;
               
-            for(int i = 0; i < NUM_SLAVES; i++){
+            for(int i = 0; i < NUM_SLAVES; i++){ //sends command to all slaves, one at a time
               writePipe(slaveAddresses[i]);
               tx_sent = radio.write(&command, sizeof(command));
           }
         }
       }
 
-            cState = C_SEND;
+            cState = C_SEND; //goes to SEND state
             break;
 /***********************************************************************************************************/            
-    case C_SEND:
+    case C_SEND: //SEND state
 
             Serial.print("Command = ");
             Serial.println(command);
             Serial.print("isFormation = ");
             Serial.println(isFormation);
             
-      if(isFormation == false){ 
+      if(isFormation == false){ //if command is not a formation button, send command to all slaves
             Serial.print("Sending command: ");
             Serial.println(command);
             
@@ -252,7 +262,7 @@ void loop() {
           }
           Serial.println(" ");          
       }
-      else{
+      else{ //if button is a formaiton button send the commands of the formation, one at a time and wait 4 seconds 
         for(int i = 0; i < ARRAY_SIZE; i++){
           for(int j = 0; j < NUM_SLAVES; j++){
             radio.openWritingPipe(slaveAddresses[j]);
@@ -262,44 +272,44 @@ void loop() {
             updateCoordinate(&slaveBot[j]);
           }
           Serial.println(" ");
-          delay(3000);
+          delay(4000);
         }
     }
-            isFormation = false;
-            command = STOP;
-            cState = C_IDLING;
+            isFormation = false; //resets the isFormation bool
+            command = STOP; //resets the command
+            cState = C_IDLING; //send the state machine back to IDLE
             break;
   }
 }
 
-void updateCoordinate(struct bot *slave){ 
+void updateCoordinate(struct bot *slave){ //update coordinates function
   switch(slave->lastMove){
 /***********************************************************************************************************/     
-    case FORWARD:
+    case FORWARD: //FORWARD command case
       switch(slave->dir){
-        case FORWARD:
+        case FORWARD: //FORWARD DIRECTION command case
           slave->y++;
           slave->dir = FORWARD;
         break;
 
-        case LEFT:
+        case LEFT: //LEFT DIRECTION command case
           slave->x--;
           slave->dir = LEFT;
         break;
 
-        case RIGHT:
+        case RIGHT: //RIGHT DIRECTION command case
           slave->x++;
           slave->dir = RIGHT;
         break;
 
-        case REVERSE:
+        case REVERSE: //BACKWARD DIRECTION command case
           slave->y--;
           slave->dir = REVERSE;
         break;
         }
     break;
 /***********************************************************************************************************/ 
-    case LEFT:
+    case LEFT: //LEFT TURN command case
         switch(slave->dir){
         case FORWARD:
           slave->dir = LEFT;
@@ -319,7 +329,7 @@ void updateCoordinate(struct bot *slave){
         }
     break;
 /***********************************************************************************************************/     
-    case RIGHT:
+    case RIGHT://RIGHT TURN command case
         switch(slave->dir){
           case FORWARD:
           slave->dir = RIGHT;
@@ -339,7 +349,7 @@ void updateCoordinate(struct bot *slave){
           }
       break;
 /***********************************************************************************************************/       
-      case REVERSE:
+      case REVERSE: //BACKWARDS command case
         switch(slave->dir){
           case FORWARD:
             slave->dir = FORWARD;
@@ -371,7 +381,7 @@ void updateCoordinate(struct bot *slave){
     Serial.print("\ty: ");
     Serial.println(slave->y);
   }
-void initSlaveBot()
+void initSlaveBot() //initalizes the slaveBot struct variables
 {  
   for (int i = 0; i < NUM_SLAVES; i++){
     slaveBot[i].botNum = i;
@@ -382,13 +392,15 @@ void initSlaveBot()
   }    
 }
 
-void readPipe(uint8_t pipeNumber, uint8_t pipeAddress)
+void readPipe(uint8_t pipeNumber, uint8_t pipeAddress) //function that sets the reading of the RF sensor
+
 {
   radio.openReadingPipe(pipeNumber, pipeAddress);
   radio.startListening();
 }
 
-void writePipe(uint8_t pipeAddress)
+void writePipe(uint8_t pipeAddress) //function that sets the writing to pipe of the RF sensor
+
 {
   radio.openWritingPipe(pipeAddress);
   radio.stopListening();  
