@@ -1,9 +1,9 @@
 /*  AUTHOR: Josue Mendez & Jenn Kazda
 /*  ===================================================================
-*   FILE: Swarm_Algorithm_Master.c
-*   MODULE: Swarm_Algorithm_Master
+*   FILE: Swarm_Algorithm_slave.c
+*   MODULE: Swarm_Algorithm_slave
 *
-*   TITLE: Master Bot Algorithm for Formation #1
+*   TITLE: Slave Bot Algorithm for Formation #1
 *
 *   MODULE DESCRIPTION:
 *   
@@ -342,7 +342,7 @@ void loop() {
           Serial.println("MOVE");
         #endif
 
-         /* Master moves according to command data */
+         /* moves according to command data */
          switch(command){ //switch statement of the commands that can be given from the master
             case FORWARD : //case to drive forward
               forward();
